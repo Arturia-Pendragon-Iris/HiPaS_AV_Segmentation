@@ -1,7 +1,7 @@
 # An end-to-end workflow for robust pulmonary artery-vein segmentation on thick-slice chest CT
 ## Overview
 This repository provides the method described in the paper:
-“An end-to-end workflow for robust pulmonary artery-vein segmentation on thick-slice chest CT”, which has been submitted to IEEE Transaction of Medical Imaging.
+“An end-to-end workflow for robust pulmonary artery-vein segmentation on thick-slice chest CT”
 
 ## Here You Can Find:
 1) A super-resolution model along z-axis to reconstruct thick slice CT scans (inter-slice thickness>=5.00mm) into thin slice CT scans (inter-slice thickness=1.00mm).
