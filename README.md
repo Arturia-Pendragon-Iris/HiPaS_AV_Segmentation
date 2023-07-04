@@ -17,8 +17,6 @@ This repository provides the method described in the paper:
 ### Accurate and robust segmentations for Lung, Airway, Heart and Blood Vessels repectively
 ![image](https://github.com/Arturia-Pendragon-Iris/PuAV-Segmentation/blob/main/img/semantics_seg.png)
 
-## Description
-PuAV is is a computer-aided detection (CADe) method for achieveing well-performed 3D-visualized whole arteries and veins on chest computerized tomography (CT). Using deep-learning, PuAV first reconstruct thick-slice CT scans into a normzalied space with 1.00 mm inter-slice thickness. Basic semantics such as lung, airway, heart and blood vessels can be achieved from the reconstructed scans accurately. Then a two-stage segmentation algorithms performed on the reconstructed scans to get the extra- and intra-pulmonary arteries and veins respectively. The accurate artery-vein segmentation can be helpful for pulmonary diseases diagnosis and surgery planning.
 ### Workflow
 ![image](https://github.com/Arturia-Pendragon-Iris/PuAV-Segmentation/blob/main/img/overview.jpg)
 
