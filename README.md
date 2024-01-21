@@ -1,21 +1,14 @@
-# An end-to-end workflow for robust pulmonary artery-vein segmentation on thick-slice chest CT
+# Deep learning-driven pulmonary arteries and veins segmentation reveals demography-associated pulmonary vasculature anatomy
 ## Overview
 This repository provides the method described in the paper:
-“An end-to-end workflow for robust pulmonary artery-vein segmentation on thick-slice chest CT”
+“Deep learning-driven pulmonary arteries and veins segmentation reveals demography-associated pulmonary vasculature anatomy”
 
-## Here You Can Find:
-1) A super-resolution model along z-axis to reconstruct thick slice CT scans (inter-slice thickness>=5.00mm) into thin slice CT scans (inter-slice thickness=1.00mm).
-2) A pulmonary arteries and veins segmentation model.  
-
-## Use PuAV for:
-### Thick-slice CT scans super-resolution
-![image](https://github.com/Arturia-Pendragon-Iris/PuAV-Segmentation/blob/main/img/slice_renders.png)
-### Extra- and intra-pulmonary arteries and veins on thin-slice CT scans
-![image](https://github.com/Arturia-Pendragon-Iris/PuAV-Segmentation/blob/main/img/seg_thin.png)
-### Extra- and intra-pulmonary arteries and veins on thick-slice CT scans
-![image](https://github.com/Arturia-Pendragon-Iris/PuAV-Segmentation/blob/main/img/seg_thick.png)
-### Accurate and robust segmentations for Lung, Airway, Heart and Blood Vessels repectively
-![image](https://github.com/Arturia-Pendragon-Iris/PuAV-Segmentation/blob/main/img/semantics_seg.png)
+## Installation
+```
+conda create -n HiPaS python==3.10
+pip install pydicom==2.4.4
+conda install pytorch torchvision torchaudio pytorch-cuda=12.1 -c pytorch -c nvidia
+```
 
 ### Workflow
 ![image](https://github.com/Arturia-Pendragon-Iris/PuAV-Segmentation/blob/main/img/overview.jpg)
