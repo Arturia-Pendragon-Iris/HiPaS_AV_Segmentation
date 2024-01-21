@@ -27,7 +27,7 @@ A part of the accessible data and the predicted results achieved by HiPaS can be
 ![image](https://github.com/Arturia-Pendragon-Iris/HiPaS_AV_Segmentation/blob/main/img/stat.png)
 
 ## Acknowledgement
-We use the [3D UNet](https://github.com/wolny/pytorch-3dunet) as the training process for the segmentation model.
+We use the [3D UNet](https://github.com/wolny/pytorch-3dunet) as the training process for the segmentation model. You can use our provided networks to train your own models by only replacing the network in the 3D UNet platform.
 
 
 
