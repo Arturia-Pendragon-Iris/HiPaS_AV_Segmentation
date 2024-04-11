@@ -6,6 +6,7 @@ This repository provides the method described in the paper:
 ## Installation
 ```
 conda create -n HiPaS python==3.8
+conda activate HiPaS
 pip install -r requirements.txt
 ```
 Here we include all the packages used in our whole platform. However, some packages are not used in this project. You can install some of these packages according to your situation.
