@@ -197,8 +197,6 @@ def butterworth_highpass_filter(image, d0=30, n=2):
     mask = 1 / (1 + ((np.sqrt((np.arange(rows)[:, np.newaxis] - crow)**2 +
                               (np.arange(cols)[np.newaxis, :] - ccol)**2)) / d0) ** (2 * n))
 
-    # 应用滤波器
-
     fft_image_shifted = np.fft.fftshift(fft_image)
     fft_image_filtered = fft_image_shifted * (1 - mask)
     result_image = np.fft.ifft2(np.fft.ifftshift(fft_image_filtered)).real
@@ -210,11 +208,9 @@ def exponential_highpass_filter(image, d0=30):
     rows, cols = image.shape
     crow, ccol = rows // 2, cols // 2
 
-    # 创建指数高通滤波器
     mask = 1 - np.exp(-((np.arange(rows)[:, np.newaxis] - crow) ** 2 +
                         (np.arange(cols)[np.newaxis, :] - ccol) ** 2) / (2 * d0 ** 2))
 
-    # 应用滤波器
     fft_image = np.fft.fft2(image)
     fft_image_shifted = np.fft.fftshift(fft_image)
     fft_image_filtered = fft_image_shifted * mask
