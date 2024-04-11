@@ -1,11 +1,11 @@
 import argparse, os
 import torch
 from analysis.connectivity import select_region, get_region
-import visualization.view_3D as view
+import view_3D as view
 from monai.inferers import SlidingWindowInferer, sliding_window_inference
 import numpy as np
 from HiPaS.model import HiPaSNet
-from analysis.filter.filter_2D import jerman_filter_scan, jerman_filter_xyz
+from filter import jerman_filter_scan, jerman_filter_xyz
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 device = torch.device("cuda:0")
