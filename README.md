@@ -2,7 +2,9 @@
 ## Overview
 This repository provides the method described in the paper:
 “Deep learning-driven pulmonary arteries and veins segmentation reveals demography-associated pulmonary vasculature anatomy”
+
 Yuetan Chu, Gongning Luo, Longxi Zhou, Shaodong Cao, Guolin Ma, Xianglin Meng, Juexiao Zhou, Changchun Yang, Dexuan Xie, Ricardo Henao, Xigang Xiao, Lianming Wu, Zhaowen Qiu, Xin Gao
+
 King Abdullah University of Science and Technology, KAUST
 
 ## Installation
