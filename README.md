@@ -18,6 +18,9 @@ Here we include all the packages used in our whole platform. However, some packa
 ## Sample data
 A part of the accessible data and the predicted results achieved by HiPaS can be downloaded [here](https://drive.google.com/drive/folders/1Bvq4hvkdKZZOivoh0RwlNZNkP5wkejX2?usp=sharing). All CT scans here are normalized from [-1000, 600] to [0, 1] and resampled to a normalized spatial resolution with the scan shape of [512, 512, 512]. The results are presented across two channels, with the first being the outcomes of artery segmentation and the second being vein segmentation. These examples are intended to demonstrate temporarily the segmentation performance of HiPaS for external data, and any other application or exploitation of the results would not be permissible without seeking proper approval. If you want to access more data, please do not hesitate to contact yuetan.chu@kaust.edu.sa. 
 
+## Train
+We use the [3D UNet](https://github.com/wolny/pytorch-3dunet) as the training process for the segmentation model and replace the default 3DUNet with our proposed network. We also provide our training framework in ```HiPaS```. The input data should be stored in HDF5 files. The HDF5 files for training should contain two datasets: raw and label. The "raw" dataset contains CT scans, while the "label" dataset is the artery-vein segmentation. The segmentation of different vessel levels should be trained separately. In order to train on your own data, you can just provide the paths to your HDF5 training and validation datasets in the YAML file, and run ```HiPaS\train.py```.
+
 ## Launching Demo Locally
 ```
 python HiPaS/predict.py
@@ -37,8 +40,7 @@ It may take about 2 minutes to achieve the prediction result for one CT volume. 
 ### Anatomical study
 ![image](https://github.com/Arturia-Pendragon-Iris/HiPaS_AV_Segmentation/blob/main/img/stat.png)
 
-## Acknowledgement
-We use the [3D UNet](https://github.com/wolny/pytorch-3dunet) as the training process for the segmentation model. You can use our provided networks to train your own models by only replacing the network in the 3D UNet platform.
+
 
 
 
