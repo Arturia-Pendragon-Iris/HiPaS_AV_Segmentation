@@ -77,7 +77,7 @@ loaders:
   train:
     # path to the training datasets
     file_paths:
-      - /data/Artery_Vein/av_4/train
+      - /data/Train_and_Test/Artery_Vein/whole_av/fold_1
 
     # SliceBuilder configuration, i.e. how to iterate over the input volume patch-by-patch
     slice_builder:
@@ -116,7 +116,7 @@ loaders:
   val:
     # path to the val datasets
     file_paths:
-      - /data/Artery_Vein/av_4/test
+      - /data/Train_and_Test/Artery_Vein/whole_av/fold_2
 
     # SliceBuilder configuration, i.e. how to iterate over the input volume patch-by-patch
     slice_builder:

@@ -5,7 +5,7 @@ import view_3D as view
 from monai.inferers import SlidingWindowInferer, sliding_window_inference
 import numpy as np
 from HiPaS.model import HiPaSNet
-from filter import jerman_filter_scan, jerman_filter_xyz
+from filter import jerman_filter_scan
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 device = torch.device("cuda:0")
@@ -28,7 +28,7 @@ def predict_lung(ct_array):
                                        progress=True,
                                        sw_device="cuda",
                                        device="cpu")
-        pre_0 = inferer(inputs=ct_array, network=model_0)
+        pre = inferer(inputs=ct_array, network=model)
     pre = pre.detach().cpu().numpy()[0, 0]
     lung = select_region(np.array(pre > 0.52, "float32"), num=2)
     return lung
@@ -48,7 +48,7 @@ def predict_av(ct_array, lung=None):
     input_set = torch.from_numpy(input_set[np.newaxis]).float()
     input_set = input_set.half()
 
-    model_0 = HiPaSNet(in_channels=2, out_channels=2)
+    model_0 = HiPaSNet(in_channels=2, out_channels=2, mid_channels=24)
     model_0.load_state_dict(torch.load("/Artery_Vein/stage_0.pth"))
     model_0.half()
     model_0.eval()
@@ -65,7 +65,7 @@ def predict_av(ct_array, lung=None):
                                        device="cpu")
         pre_0 = inferer(inputs=input_set, network=model_0)
 
-    model_1 = HiPaSNet(in_channels=2, out_channels=2)
+    model_1 = HiPaSNet(in_channels=2, out_channels=2, mid_channels=24)
     model_1.load_state_dict(torch.load("/Artery_Vein/stage_1.pth"))
     model_1.half()
     model_1.eval()
@@ -82,7 +82,7 @@ def predict_av(ct_array, lung=None):
                                        device="cpu")
         pre_1 = inferer(inputs=(input_set, pre_0), network=model_1)
 
-    model_2 = HiPaSNet(in_channels=2, out_channels=2)
+    model_2 = HiPaSNet(in_channels=2, out_channels=2, mid_channels=24)
     model_2.load_state_dict(torch.load("/Artery_Vein/stage_2.pth"))
     model_2.half()
     model_2.eval()
@@ -99,7 +99,7 @@ def predict_av(ct_array, lung=None):
                                        device="cpu")
         pre_2 = inferer(inputs=(input_set, pre_1), network=model_2)
 
-    model_3 = HiPaSNet(in_channels=2, out_channels=2)
+    model_3 = HiPaSNet(in_channels=2, out_channels=2, mid_channels=24)
     model_3.load_state_dict(torch.load("/Artery_Vein/stage_3.pth"))
     model_3.half()
     model_3.eval()
