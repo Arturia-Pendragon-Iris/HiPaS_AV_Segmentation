@@ -20,9 +20,7 @@ def predict_lung(ct_array):
 
     ct_array = torch.tensor(ct_array[np.newaxis, np.newaxis]).to(torch.float).to(device).half()
     with torch.no_grad():
-        pre = sliding_window_inference(inputs=ct_array,
-                                       predictor=model,
-                                       roi_size=(192, 192, 128),
+        inferer = SlidingWindowInferer(roi_size=(192, 192, 128),
                                        sw_batch_size=1,
                                        overlap=0.25,
                                        mode="gaussian",
@@ -30,6 +28,7 @@ def predict_lung(ct_array):
                                        progress=True,
                                        sw_device="cuda",
                                        device="cpu")
+        pre_0 = inferer(inputs=ct_array, network=model_0)
     pre = pre.detach().cpu().numpy()[0, 0]
     lung = select_region(np.array(pre > 0.52, "float32"), num=2)
     return lung
