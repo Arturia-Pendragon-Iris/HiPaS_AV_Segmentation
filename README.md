@@ -23,7 +23,7 @@ A part of the accessible data and the predicted results achieved by HiPaS can be
 python HiPaS/predict.py
 ```
 
-It may take about 2 minutes to achieve the prediction result for one CT volume.
+It may take about 2 minutes to achieve the prediction result for one CT volume. To run the program on your own data, you can just replace the default path too your own file path.
 
 ### Workflow
 ![image](https://github.com/Arturia-Pendragon-Iris/HiPaS_AV_Segmentation/blob/main/img/fig-1-3.png)
