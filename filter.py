@@ -150,6 +150,23 @@ def jerman_filter(np_array, tau=1, enhance=False):
 
     return output
 
+
+def jerman_filter_scan(raw_array, tau=1, enhance=False, lung=None):
+    # print(raw_array.shape)
+    output_scan = np.zeros(raw_array.shape)
+    # raw_array = 255 - np.clip(raw_array + 0.25, 0, 1) * 255
+
+    for j in range(raw_array.shape[-1]):
+        raw_1 = raw_array[:, :, j]
+        if np.sum(raw_1) == 0:
+            continue
+        output_scan[:, :, j] = jerman_filter(raw_array[:, :, j], enhance=enhance, tau=tau)
+
+    if lung is not None:
+        output_scan *= (lung - get_surface_3D(lung, strict=False))
+    return output_scan
+
+
 # Gaussian filter
 def gaussian_filter(np_array, sigma=2, order=0):
     return gaussian(np_array, sigma=sigma, order=order)
