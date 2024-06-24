@@ -75,8 +75,8 @@ def trainor(data_loader, optimizer, model, epoch):
         # gt = gt.to(device, non_blocking=True)
         pre = model(raw)
         # print(pre.shape)
-        for i in range(pre.shape[1]):
-            pre[:, i, :, :] += raw[:, 2, :, :]
+        # for i in range(pre.shape[1]):
+        #     pre[:, i, :, :] += raw[:, 2, :, :]
 
         # view_1 = raw.cpu().detach().numpy()
         # view_2 = pre.cpu().detach().numpy()
