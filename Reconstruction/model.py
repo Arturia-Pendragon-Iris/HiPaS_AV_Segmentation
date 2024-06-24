@@ -54,7 +54,7 @@ class FRB(nn.Module):
                                 kernel_size=(1, 1, 1), stride=(1, 1, 1),
                                 padding=(0, 0, 0))
 
-        self.norm = nn.LayerNorm([2 * nc_in, 512, 512, 5])
+        self.norm = nn.BatchNorm3d(2 * nc_in)
         self.relu = nn.LeakyReLU(negative_slope=0.1)
 
     def forward(self, x):
@@ -91,7 +91,7 @@ class RRDB(nn.Module):
 
 
 class I2SR(nn.Module):
-    def __init__(self, nc_in=1, nc_out=1, nc=16):
+    def __init__(self, nc_in=1, nc_out=1, nc=16, iter=6):
         super(I2SR, self).__init__()
 
         self.fea_conv = nn.Conv3d(in_channels=nc_in, out_channels=nc,
@@ -99,13 +99,11 @@ class I2SR(nn.Module):
         self.rb_blocks = nn.Sequential(
             RRDB(nc, kernel_size=3),
             RRDB(nc, kernel_size=3))
-        self.fusion_block = nn.Sequential(
-            FRB(nc_in=nc, nc_out=nc),
-            FRB(nc_in=nc, nc_out=nc),
-            FRB(nc_in=nc, nc_out=2 * nc),
-            FRB(nc_in=2 * nc, nc_out=nc),
-            FRB(nc_in=nc, nc_out=nc),
-            FRB(nc_in=nc, nc_out=nc))
+
+        self.fusion_block = []
+        for _ in range(iter):
+            self.fusion_block.append(FRB(nc_in=nc, nc_out=nc))
+        self.fusion_block = nn.Sequential(*self.fusion_block)
 
         self.get_g_nopadding = Getgradientnopadding()
 
