@@ -9,7 +9,7 @@ King Abdullah University of Science and Technology, KAUST
 
 ## Installation
 ```
-conda create -n HiPaS python==3.8
+conda create -n HiPaS python=3.8
 conda activate HiPaS
 pip install -r requirements.txt
 ```
