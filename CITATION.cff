@@ -1,0 +1,9 @@
+cff-version: 2.0.1
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: Chu
+  given-names: Yuetan
+orcid: https://orcid.org/0000-0003-1729-831X
+title: HiPaS Artery-vein Segmentation
+version: v2.0.1
+date-released: 2024-12-09
