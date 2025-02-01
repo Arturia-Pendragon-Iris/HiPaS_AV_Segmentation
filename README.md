@@ -18,6 +18,17 @@ Here we include all the packages used in our whole platform. However, some packa
 ## Sample data
 A part of the accessible data and the predicted results achieved by HiPaS can be downloaded [here](https://drive.google.com/drive/folders/1Bvq4hvkdKZZOivoh0RwlNZNkP5wkejX2?usp=sharing). All CT scans here are normalized from [-1000, 600] to [0, 1] and resampled to a normalized spatial resolution with the scan shape of [512, 512, 512]. The results are presented across two channels, with the first being the outcomes of artery segmentation and the second being vein segmentation. These examples are intended to demonstrate temporarily the segmentation performance of HiPaS for external data, and any other application or exploitation of the results would not be permissible without seeking proper approval. If you want to access more data, please do not hesitate to contact yuetan.chu@kaust.edu.sa. 
 
+## Datasets
+We have released ~250 cases of chest CT scans with artery-vein annotations. You can download the datasets using this [link](https://drive.google.com/drive/folders/1_cmGR_HbrzomaqoWZYqX8D36bmxHp2PL?usp=drive_link). To open the CT data and annotation, you can use the following code
+
+```
+ct = np.load(".\ct_scan\001.npz", allow_pickle=True)["data"]
+artery = np.load(".\annotation\artery\001.npz", allow_pickle=True)["data"]
+vein = np.load(".\annotation\vein\001.npz", allow_pickle=True)["data"]
+```
+
+Due to the consideration of the project commercialization, our annotation keeps the same as the segmentation standard in the [PARSE22 challenge](https://grand-challenge.org/forums/forum/parse2022-623), Stage 2 as shown in Supplementary Figure 6 in our Supplementary Information. This can satisfy most clinical requirements. FOr thr rest datasets, we plan to release them gradually in the future either in the form of a challenge. Stay tuned!!!!! 
+
 ## Train
 You can use the [3D UNet](https://github.com/wolny/pytorch-3dunet) as the training process for the segmentation model and replace the default 3DUNet with our proposed network. We also provide our training framework in ```HiPaS```. The input data should be stored in HDF5 files. The HDF5 files for training should contain two datasets: raw and label. The "raw" dataset contains CT scans, while the "label" dataset is the artery-vein segmentation. The segmentation of different vessel levels should be trained separately. In order to train on your own data, you can provide the paths to your HDF5 training and validation datasets in the YAML file, and run ```HiPaS/train.py```.
 
