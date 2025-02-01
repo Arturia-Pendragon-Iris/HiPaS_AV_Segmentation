@@ -29,7 +29,7 @@ artery = np.load(".\annotation\artery\001.npz", allow_pickle=True)["data"]
 vein = np.load(".\annotation\vein\001.npz", allow_pickle=True)["data"]
 ```
 
-Due to the consideration of the project commercialization, our annotation keeps the same as the segmentation standard in the [PARSE22 challenge](https://grand-challenge.org/forums/forum/parse2022-623), as shown in Supplementary Figure 6 (Stage 2) in our Supplementary Information. This can satisfy most clinical requirements. For the rest datasets, we plan to release them gradually in the future either in the form of a challenge. Stay tuned!!!!! 
+Due to the consideration of the project commercialization, our annotation keeps the same as the segmentation standard in the [PARSE22 challenge](https://grand-challenge.org/forums/forum/parse2022-623/), as shown in Supplementary Figure 6 (Stage 2) in our Supplementary Information. This can satisfy most clinical requirements. For the rest datasets, we plan to release them gradually in the future either in the form of a challenge. Stay tuned!!!!! 
 
 ## Train
 You can use the [3D UNet](https://github.com/wolny/pytorch-3dunet) as the training process for the segmentation model and replace the default 3DUNet with our proposed network. We also provide our training framework in ```HiPaS```. The input data should be stored in HDF5 files. The HDF5 files for training should contain two datasets: raw and label. The "raw" dataset contains CT scans, while the "label" dataset is the artery-vein segmentation. The segmentation of different vessel levels should be trained separately. In order to train on your own data, you can provide the paths to your HDF5 training and validation datasets in the YAML file, and run ```HiPaS/train.py```.
