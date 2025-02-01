@@ -7,6 +7,8 @@ Yuetan Chu, Gongning Luo, Longxi Zhou, Shaodong Cao, Guolin Ma, Xianglin Meng, J
 
 King Abdullah University of Science and Technology, KAUST
 
+Our manuscript has been accepted by Nature Communication and is now in publication. Congratulation!!!!! We will update any information timely. 
+
 ## Installation
 ```
 conda create -n HiPaS python=3.8
