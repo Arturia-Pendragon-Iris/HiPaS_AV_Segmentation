@@ -9,6 +9,8 @@ King Abdullah University of Science and Technology, KAUST
 
 Our manuscript has been accepted by Nature Communication and is now in publication. Congratulation!!!!! We will update any information timely. 
 
+If you have any questions about the code, paper, or datasets, please email yuetan.chu@kaust.edu.sa. 
+
 ## Installation
 ```
 conda create -n HiPaS python=3.8
