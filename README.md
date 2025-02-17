@@ -27,7 +27,7 @@ A part of the accessible data and the predicted results achieved by HiPaS can be
 ## Datasets
 
 
-We have released ~250 cases of chest CT scans with artery-vein annotations. You can download the datasets using this [link](https://drive.google.com/drive/folders/1_cmGR_HbrzomaqoWZYqX8D36bmxHp2PL?usp=drive_link) (The file is uploading now and you can download it after maybe 12pm, Feb 17th, UTC+8). To open the CT data and annotation, you can use the following code
+We have released ~250 cases of chest CT scans with artery-vein annotations. You can download the datasets using this [Google drive link](https://drive.google.com/drive/folders/1_cmGR_HbrzomaqoWZYqX8D36bmxHp2PL?usp=drive_link) or the [Zenodo link](https://zenodo.org/records/14879605). To open the CT data and annotation, you can use the following code
 
 
 ```
