@@ -1,7 +1,7 @@
 # Deep learning-driven pulmonary artery and vein segmentation reveals demography-associated vasculature anatomical differences
 ## Overview
 This repository provides the method described in the paper:
-“Deep learning-driven pulmonary arteries and veins segmentation reveals demography-associated pulmonary vasculature anatomy”
+“Deep learning-driven pulmonary artery and vein segmentation reveals demography-associated vasculature anatomical differences”
 
 Yuetan Chu, Gongning Luo, Longxi Zhou, Shaodong Cao, Guolin Ma, Xianglin Meng, Juexiao Zhou, Changchun Yang, Dexuan Xie, Ricardo Henao, Xigang Xiao, Lianming Wu, Zhaowen Qiu, Xin Gao
 
