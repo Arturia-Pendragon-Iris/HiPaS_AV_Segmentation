@@ -3,8 +3,6 @@
 This repository provides the method described in the paper:
 “Deep learning-driven pulmonary artery and vein segmentation reveals demography-associated vasculature anatomical differences”
 
-Yuetan Chu, Gongning Luo, Longxi Zhou, Shaodong Cao, Guolin Ma, Xianglin Meng, Juexiao Zhou, Changchun Yang, Dexuan Xie, Ricardo Henao, Xigang Xiao, Lianming Wu, Zhaowen Qiu, Xin Gao
-
 King Abdullah University of Science and Technology, KAUST
 
 Our manuscript has been accepted by Nature Communication and is now in publication. Congratulation!!!!! We will update any information timely. 
