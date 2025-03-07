@@ -59,15 +59,7 @@ To predict on your own data, you can provide the checkpoint path as well as path
 
 ## Cite
 ```
-@misc{chu2024deeplearningdrivenpulmonaryartery,
-      title={Deep learning-driven pulmonary artery and vein segmentation reveals demography-associated vasculature anatomical differences}, 
-      author={Yuetan Chu and Gongning Luo and Longxi Zhou and Shaodong Cao and Guolin Ma and Xianglin Meng and Juexiao Zhou and Changchun Yang and Dexuan Xie and Dan Mu and Ricardo Henao and Gianluca Setti and Xigang Xiao and Lianming Wu and Zhaowen Qiu and Xin Gao},
-      year={2024},
-      eprint={2404.07671},
-      archivePrefix={arXiv},
-      primaryClass={cs.CV},
-      url={https://arxiv.org/abs/2404.07671}, 
-}
+Chu, Y., Luo, G., Zhou, L. et al. Deep learning-driven pulmonary artery and vein segmentation reveals demography-associated vasculature anatomical differences. Nat Commun 16, 2262 (2025). https://doi.org/10.1038/s41467-025-56505-6
 ```
 
 
