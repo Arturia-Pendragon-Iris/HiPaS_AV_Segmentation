@@ -69,7 +69,7 @@ def predict_av(ct_array, lung=None):
     model_1.load_state_dict(torch.load("/Artery_Vein/stage_1.pth"))
     model_1.half()
     model_1.eval()
-    model_1 = model_0.to('cuda')
+    model_1 = model_1.to('cuda')
 
     with torch.no_grad():
         inferer = SlidingWindowInferer(roi_size=(192, 192, 128),
@@ -86,7 +86,7 @@ def predict_av(ct_array, lung=None):
     model_2.load_state_dict(torch.load("/Artery_Vein/stage_2.pth"))
     model_2.half()
     model_2.eval()
-    model_2 = model_0.to('cuda')
+    model_2 = model_2.to('cuda')
 
     with torch.no_grad():
         inferer = SlidingWindowInferer(roi_size=(192, 192, 128),
@@ -103,7 +103,7 @@ def predict_av(ct_array, lung=None):
     model_3.load_state_dict(torch.load("/Artery_Vein/stage_3.pth"))
     model_3.half()
     model_3.eval()
-    model_3 = model_0.to('cuda')
+    model_3 = model_3.to('cuda')
 
     with torch.no_grad():
         inferer = SlidingWindowInferer(roi_size=(192, 192, 128),
