@@ -9,6 +9,8 @@ Our manuscript has been accepted by Nature Communication and is now in publicati
 
 If you have any questions about the code, paper, or datasets, please email yuetan.chu@kaust.edu.sa. 
 
+**Due to commercialization and patent protection policies, we are currently unable to provide the final checkpoint. However, we have tried to implement the artery-vein segmentation in a simpler way based on our released dataset. You can find the project with the [link](https://github.com/Tohsaka194/Simple_AV_seg). **
+
 ## Installation
 ```
 conda create -n HiPaS python=3.8
