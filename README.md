@@ -4,7 +4,6 @@
 
 [📄 Paper](https://doi.org/10.1038/s41467-025-56505-6) · [📦 Dataset (Zenodo)](https://zenodo.org/records/14879605) · [✉️ Contact](mailto:yuetan.chu@kaust.edu.sa)
 
-*King Abdullah University of Science and Technology (KAUST)*
 
 ---
 
