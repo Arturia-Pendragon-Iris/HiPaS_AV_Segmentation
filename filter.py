@@ -4,238 +4,114 @@ from scipy import ndimage
 from scipy.ndimage import gaussian_filter as gaussian
 
 
-# frangi filter
 def frangi_filter(np_array, scale_range=range(1, 10, 2), alpha=0.5, beta=0.5, gamma=15, enhance=False):
-    new_array = np_array.copy()
+    arr = np_array.copy()
     if enhance:
-        new_array = np.sqrt(1 - (1 - new_array) ** 2)
-
-    return frangi(new_array, sigmas=scale_range,
-                  alpha=alpha, beta=beta, gamma=gamma, black_ridges=False)
+        arr = np.sqrt(1 - (1 - arr) ** 2)
+    return frangi(arr, sigmas=scale_range, alpha=alpha, beta=beta, gamma=gamma, black_ridges=False)
 
 
-# jerman filter
 class vesselness2d:
     def __init__(self, image, sigma, tau):
-        super(vesselness2d, self).__init__()
-
         self.image = image
         self.sigma = sigma
         self.tau = tau
         self.size = image.shape
 
-    def gaussian_filter(self, image, sigma):
-        image = ndimage.gaussian_filter(image, sigma, mode='nearest')
-        return image
-
-    def gradient_2d(self, np_array, option):
-        x_size = self.size[0]
-        y_size = self.size[1]
-        gradient = np.zeros(np_array.shape)
-        if option == "x":
-            gradient[0, :] = np_array[1, :] - np_array[0, :]
-            gradient[x_size - 1, :] = np_array[x_size - 1, :] - np_array[x_size - 2, :]
-            gradient[1:x_size - 2, :] = \
-                (np_array[2:x_size - 1, :] - np_array[0:x_size - 3, :]) / 2
+    def _gradient(self, arr, axis):
+        n = self.size[0] if axis == "x" else self.size[1]
+        grad = np.zeros_like(arr)
+        if axis == "x":
+            grad[0, :] = arr[1, :] - arr[0, :]
+            grad[n - 1, :] = arr[n - 1, :] - arr[n - 2, :]
+            grad[1:n - 2, :] = (arr[2:n - 1, :] - arr[0:n - 3, :]) / 2
         else:
-            gradient[:, 0] = np_array[:, 1] - np_array[:, 0]
-            gradient[:, y_size - 1] = np_array[:, y_size - 1] - np_array[:, y_size - 2]
-            gradient[:, 1:y_size - 2] = \
-                (np_array[:, 2:y_size - 1] - np_array[:, 0:y_size - 3]) / 2
-        return gradient
+            grad[:, 0] = arr[:, 1] - arr[:, 0]
+            grad[:, n - 1] = arr[:, n - 1] - arr[:, n - 2]
+            grad[:, 1:n - 2] = (arr[:, 2:n - 1] - arr[:, 0:n - 3]) / 2
+        return grad
 
-    def Hessian2d(self, image, sigma):
-        # print(sigma)
+    def _hessian2d(self, image, sigma):
         image = ndimage.gaussian_filter(image, sigma, mode='nearest')
-        Dy = self.gradient_2d(image, "y")
-        Dyy = self.gradient_2d(Dy, "y")
+        Dx = self._gradient(image, "x")
+        Dy = self._gradient(image, "y")
+        return self._gradient(Dx, "x"), self._gradient(Dy, "y"), self._gradient(Dx, "y")
 
-        Dx = self.gradient_2d(image, "x")
-        Dxx = self.gradient_2d(Dx, "x")
-        Dxy = self.gradient_2d(Dx, 'y')
-        return Dxx, Dyy, Dxy
-
-    def eigval_Hessian2d(self, Dxx, Dyy, Dxy):
-        tmp = np.sqrt((Dxx - Dyy) ** 2 + 4 * (Dxy ** 2))
-        # compute eigenvectors of J, v1 and v2
+    def _eigvals(self, Dxx, Dyy, Dxy):
+        tmp = np.sqrt((Dxx - Dyy) ** 2 + 4 * Dxy ** 2)
         mu1 = 0.5 * (Dxx + Dyy + tmp)
         mu2 = 0.5 * (Dxx + Dyy - tmp)
-        # Sort eigen values by absolute value abs(Lambda1) < abs(Lambda2)
-        indices = (np.absolute(mu1) > np.absolute(mu2))
-        Lambda1 = mu1
-        Lambda1[indices] = mu2[indices]
+        swap = np.abs(mu1) > np.abs(mu2)
+        lam1, lam2 = mu1.copy(), mu2.copy()
+        lam1[swap], lam2[swap] = mu2[swap], mu1[swap]
+        return lam1, lam2
 
-        Lambda2 = mu2
-        Lambda2[indices] = mu1[indices]
-        return Lambda1, Lambda2
-
-    def imageEigenvalues(self, I, sigma):
-        hxx, hyy, hxy = self.Hessian2d(I, sigma)
-        # hxx, hyy, hxy = self.Hessian2d(I, sigma)
+    def _image_eigenvalues(self, image, sigma):
+        hxx, hyy, hxy = self._hessian2d(image, sigma)
         c = sigma ** 2
-        hxx = -c * hxx
-        hyy = -c * hyy
-        hxy = -c * hxy
+        hxx, hyy, hxy = -c * hxx, -c * hyy, -c * hxy
 
-        B1 = -(hxx + hyy)
-        B2 = hxx * hyy - hxy ** 2
-        T = np.ones(B1.shape)
-        T[(B1 < 0)] = 0
-        T[(B1 == 0) & (B2 == 0)] = 0
-        T = T.flatten()
-        indeces = np.where(T == 1)[0]
-        hxx = hxx.flatten()
-        hyy = hyy.flatten()
-        hxy = hxy.flatten()
-        hxx = hxx[indeces]
-        hyy = hyy[indeces]
-        hxy = hxy[indeces]
-        #     lambda1i, lambda2i = hessian_matrix_eigvals([hxx, hyy, hxy])
-        lambda1i, lambda2i = self.eigval_Hessian2d(hxx, hyy, hxy)
-        lambda1 = np.zeros(self.size[0] * self.size[1], )
-        lambda2 = np.zeros(self.size[0] * self.size[1], )
+        B1, B2 = -(hxx + hyy), hxx * hyy - hxy ** 2
+        valid = ((B1 > 0) | ((B1 == 0) & (B2 != 0))).flatten()
+        idx = np.where(valid)[0]
 
-        lambda1[indeces] = lambda1i
-        lambda2[indeces] = lambda2i
+        hxx_f, hyy_f, hxy_f = hxx.flatten()[idx], hyy.flatten()[idx], hxy.flatten()[idx]
+        lam1i, lam2i = self._eigvals(hxx_f, hyy_f, hxy_f)
 
-        # removing noise
-        lambda1[(np.isinf(lambda1))] = 0
-        lambda2[(np.isinf(lambda2))] = 0
+        n = self.size[0] * self.size[1]
+        lam1, lam2 = np.zeros(n), np.zeros(n)
+        lam1[idx], lam2[idx] = lam1i, lam2i
 
-        lambda1[(np.absolute(lambda1) < 1e-4)] = 0
-        lambda1 = lambda1.reshape(self.size)
+        for lam in (lam1, lam2):
+            lam[np.isinf(lam)] = 0
+            lam[np.abs(lam) < 1e-4] = 0
 
-        lambda2[(np.absolute(lambda2) < 1e-4)] = 0
-        lambda2 = lambda2.reshape(self.size)
-        return lambda1, lambda2
+        return lam1.reshape(self.size), lam2.reshape(self.size)
 
     def vesselness2d(self):
-        for j in range(len(self.sigma)):
-            lambda1, lambda2 = self.imageEigenvalues(self.image, self.sigma[j])
-            # return lambda1, lambda2
-            # plot_parallel(
-            #     a=lambda1,
-            #     n=lambda2
-            # )
+        vesselness = None
+        for sigma in self.sigma:
+            lam1, lam2 = self._image_eigenvalues(self.image, sigma)
+            lam3 = lam2.copy()
+            new_tau = self.tau * lam3.min()
+            lam3[(lam3 < 0) & (lam3 >= new_tau)] = new_tau
 
-            lambda3 = lambda2.copy()
-            new_tau = self.tau * np.min(lambda3)
-            lambda3[(lambda3 < 0) & (lambda3 >= new_tau)] = new_tau
-            different = lambda3 - lambda2
-            response = ((np.absolute(lambda2) ** 2) * np.absolute(different)) * 27 / (
-                        (2 * np.absolute(lambda2) + np.absolute(different)) ** 3)
-            response[(lambda2 < lambda3 / 2)] = 1
-            response[(lambda2 >= 0)] = 0
+            diff = lam3 - lam2
+            response = (np.abs(lam2) ** 2 * np.abs(diff)) * 27 / (2 * np.abs(lam2) + np.abs(diff)) ** 3
+            response[lam2 < lam3 / 2] = 1
+            response[lam2 >= 0] = 0
+            response[np.isinf(response)] = 0
 
-            response[np.where(np.isinf(response))[0]] = 0
-            if j == 0:
-                vesselness = response
-            else:
-                vesselness = np.maximum(vesselness, response)
-        #     vesselness = vesselness / np.max(vesselness)
-        vesselness[(vesselness < 1e-2)] = 0
-        #         vesselness = vesselness.reshape(self.size)
+            vesselness = response if vesselness is None else np.maximum(vesselness, response)
+
+        vesselness[vesselness < 1e-2] = 0
         return vesselness
 
 
 def jerman_filter(np_array, tau=1, enhance=False):
-    new_array = np_array.copy()
+    arr = np_array.copy()
     if enhance:
-        new_array = np.sqrt(1 - (1 - new_array) ** 2)
-    new_array = 255 * (1 - new_array)
+        arr = np.sqrt(1 - (1 - arr) ** 2)
+    arr = 255 * (1 - arr)
+    return vesselness2d(arr, sigma=[0.5, 1, 1.5], tau=tau).vesselness2d()
 
-    sigma = [0.5, 1, 1.5]
-    output = vesselness2d(new_array, sigma, tau)
-    output = output.vesselness2d()
 
+def jerman_filter_scan(raw_array, tau=1, enhance=False):
+    output = np.zeros(raw_array.shape)
+    for j in range(raw_array.shape[-1]):
+        slice_ = raw_array[:, :, j]
+        if slice_.sum() == 0:
+            continue
+        output[:, :, j] = jerman_filter(slice_, enhance=enhance, tau=tau)
     return output
 
 
-def jerman_filter_scan(raw_array, tau=1, enhance=False, lung=None):
-    # print(raw_array.shape)
-    output_scan = np.zeros(raw_array.shape)
-    # raw_array = 255 - np.clip(raw_array + 0.25, 0, 1) * 255
-
-    for j in range(raw_array.shape[-1]):
-        raw_1 = raw_array[:, :, j]
-        if np.sum(raw_1) == 0:
-            continue
-        output_scan[:, :, j] = jerman_filter(raw_array[:, :, j], enhance=enhance, tau=tau)
-
-    if lung is not None:
-        output_scan *= (lung - get_surface_3D(lung, strict=False))
-    return output_scan
-
-
-# Gaussian filter
 def gaussian_filter(np_array, sigma=2, order=0):
     return gaussian(np_array, sigma=sigma, order=order)
 
 
 def sobel_filter(np_array):
-    sobel_h = ndimage.sobel(np_array, 0)  # horizontal gradient
-    sobel_v = ndimage.sobel(np_array, 1)  # vertical gradient
+    sobel_h = ndimage.sobel(np_array, 0)
+    sobel_v = ndimage.sobel(np_array, 1)
     magnitude = np.sqrt(sobel_h ** 2 + sobel_v ** 2)
-
-    return magnitude / np.max(magnitude)
-
-
-# kernel filter
-def do_highpass_filter(np_array, order=3, average=True):
-    # cv2.imshow("org", image)
-    if order == 3:
-        kernel = np.array([[-1, -1, -1],
-                             [-1, 8, -1],
-                             [-1, -1, -1]])
-    elif order == 5:
-        kernel = np.array([[-1, -1, -1, -1, -1],
-                             [-1, 1, 2, 1, -1],
-                             [-1, 2, 4, 2, -1],
-                             [-1, 1, 2, 1, -1],
-                             [-1, -1, -1, -1, -1]])
-    else:
-        kernel = np.array([[1, 1, 1],
-                           [1, 1, 1],
-                           [1, 1, 1]])
-
-    filtered = ndimage.convolve(np_array, kernel)
-    if average:
-        filtered *= np.mean(np_array) / np.mean(filtered)
-
-    return filtered
-
-
-def butterworth_highpass_filter(image, d0=30, n=2):
-    rows, cols = image.shape
-    crow, ccol = rows // 2, cols // 2
-
-    fft_image = np.fft.fft2(image)
-
-    mask = 1 / (1 + ((np.sqrt((np.arange(rows)[:, np.newaxis] - crow)**2 +
-                              (np.arange(cols)[np.newaxis, :] - ccol)**2)) / d0) ** (2 * n))
-
-    fft_image_shifted = np.fft.fftshift(fft_image)
-    fft_image_filtered = fft_image_shifted * (1 - mask)
-    result_image = np.fft.ifft2(np.fft.ifftshift(fft_image_filtered)).real
-
-    return result_image
-
-
-def exponential_highpass_filter(image, d0=30):
-    rows, cols = image.shape
-    crow, ccol = rows // 2, cols // 2
-
-    mask = 1 - np.exp(-((np.arange(rows)[:, np.newaxis] - crow) ** 2 +
-                        (np.arange(cols)[np.newaxis, :] - ccol) ** 2) / (2 * d0 ** 2))
-
-    fft_image = np.fft.fft2(image)
-    fft_image_shifted = np.fft.fftshift(fft_image)
-    fft_image_filtered = fft_image_shifted * mask
-    result_image = np.fft.ifft2(np.fft.ifftshift(fft_image_filtered)).real
-
-    # result_image *= np.mean(image) / np.mean(result_image)
-    return result_image
-
-
-
-
+    return magnitude / magnitude.max()

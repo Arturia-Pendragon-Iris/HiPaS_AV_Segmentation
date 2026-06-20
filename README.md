@@ -1,66 +1,207 @@
-# Deep learning-driven pulmonary artery and vein segmentation reveals demography-associated vasculature anatomical differences
+# HiPaS: High-abundant Pulmonary Artery-vein Segmentation
+
+**[Nature Communications 2025]** Deep learning-driven pulmonary artery and vein segmentation reveals demography-associated vasculature anatomical differences
+
+[📄 Paper](https://doi.org/10.1038/s41467-025-56505-6) · [📦 Dataset (Zenodo)](https://zenodo.org/records/14879605) · [✉️ Contact](mailto:yuetan.chu@kaust.edu.sa)
+
+*King Abdullah University of Science and Technology (KAUST)*
+
+---
+
 ## Overview
-This repository provides the method described in the paper:
-“Deep learning-driven pulmonary artery and vein segmentation reveals demography-associated vasculature anatomical differences”
 
-King Abdullah University of Science and Technology, KAUST
+HiPaS is a framework for accurate, high-abundant pulmonary artery-vein segmentation on both non-contrast CT and CTPA. It consists of two modules:
 
-Our manuscript has been accepted by Nature Communication and is now in publication. Congratulation!!!!! We will update any information timely. 
+- **I2SR** — an inter-and-intra-slice super-resolution module that normalises CT scans to a consistent spatial resolution before segmentation.
+- **STS** — a cascaded four-stage Saliency-Transmission Segmentation module that progressively segments vessels from coarse to fine, using the output of each stage as a spatial prior for the next.
 
-If you have any questions about the code, paper, or datasets, please email yuetan.chu@kaust.edu.sa. 
+> **Note on checkpoints.** Due to commercialization and patent policies, the final trained weights are not publicly available. For a simpler, deployable alternative, see [Simple_AV_seg](https://github.com/Tohsaka194/Simple_AV_seg).
 
-**Due to commercialization and patent protection policies, we are currently unable to provide the final checkpoint. However, we have tried to implement the artery-vein segmentation in a simpler way based on our released dataset. You can find the project with the [link](https://github.com/Tohsaka194/Simple_AV_seg).**
+---
 
 ## Installation
-```
+
+```bash
 conda create -n HiPaS python=3.8
 conda activate HiPaS
-pip install -r requirements.txt
-```
-Here we include all the packages used in our whole platform. However, some packages are not used in this project. You can install some of these packages according to your situation.
-
-<!--
-## Sample data
-A part of the accessible data and the predicted results achieved by HiPaS can be downloaded [here](https://drive.google.com/drive/folders/1Bvq4hvkdKZZOivoh0RwlNZNkP5wkejX2?usp=sharing). All CT scans here are normalized from [-1000, 600] to [0, 1] and resampled to a normalized spatial resolution with the scan shape of [512, 512, 512]. The results are presented across two channels, with the first being the outcomes of artery segmentation and the second being vein segmentation. These examples are intended to demonstrate temporarily the segmentation performance of HiPaS for external data, and any other application or exploitation of the results would not be permissible without seeking proper approval. If you want to access more data, please do not hesitate to contact yuetan.chu@kaust.edu.sa. 
--->
-
-## Datasets
-
-
-We have released ~250 cases of chest CT scans with artery-vein annotations. You can download the datasets using the [Zenodo link](https://zenodo.org/records/14879605). To open the CT data and annotation, you can use the following code
-
-
-```
-ct = np.load(".\ct_scan\001.npz", allow_pickle=True)["data"]
-artery = np.load(".\annotation\artery\001.npz", allow_pickle=True)["data"]
-vein = np.load(".\annotation\vein\001.npz", allow_pickle=True)["data"]
+pip install -r requirement.txt
 ```
 
-Due to the consideration of the project commercialization, the released annotations keep the same as the segmentation standard in the [PARSE22 challenge](https://grand-challenge.org/forums/forum/parse2022-623/), as shown in Supplementary Figure 6 (Stage 2) in our Supplementary Information. This can satisfy most clinical requirements.
+The `requirement.txt` includes all packages used across the full platform. Not every package is required for inference alone — install selectively if disk space is a concern.
 
+**Tested environment:** Python 3.8, PyTorch 2.x, CUDA 12.x, MONAI 1.x.
 
-## Train
-You can use the [3D UNet](https://github.com/wolny/pytorch-3dunet) as the training process for the segmentation model and replace the default 3DUNet with our proposed network. We also provide our training framework in ```HiPaS```. The input data should be stored in HDF5 files. The HDF5 files for training should contain two datasets: raw and label. The "raw" dataset contains CT scans, while the "label" dataset is the artery-vein segmentation. The segmentation of different vessel levels should be trained separately. In order to train on your own data, you can provide the paths to your HDF5 training and validation datasets in the YAML file, and run ```HiPaS/train.py```.
+---
 
-## Predict
-To predict on your own data, you can provide the checkpoint path as well as paths of the CT volume, and run ```HiPaS/predict_av.py```. It may take about 2 minutes to achieve the prediction result for one CT volume. To run the program on your own data, you can just replace the default path too your own file path.
+## Dataset
+
+Approximately 250 chest CT scans with artery-vein annotations are publicly available on [Zenodo](https://zenodo.org/records/14879605). The annotations follow the PARSE22 challenge standard, covering vessel levels up to Stage 2 (3–5 branch levels), as illustrated in Supplementary Figure 6c of the paper.
+
+**File format:** NumPy compressed archives (`.npz`), with each array stored under the key `"data"`.
+
+```python
+import numpy as np
+
+ct     = np.load("ct_scan/001.npz",          allow_pickle=True)["data"]  # shape (D, H, W), float32
+artery = np.load("annotation/artery/001.npz", allow_pickle=True)["data"] # shape (D, H, W), binary
+vein   = np.load("annotation/vein/001.npz",   allow_pickle=True)["data"] # shape (D, H, W), binary
+```
+
+CT values are normalised from the HU window `[−1000, 600]` to `[0, 1]` and resampled to a normalised spatial resolution (approximately 0.65 × 0.65 × 1.00 mm³, volume shape 512 × 512 × 512).
+
+---
+
+## Inference
+
+Run `HiPaS/predict_av.py` to segment a CT volume into pulmonary arteries and veins. Edit the paths at the bottom of the script to point to your CT file and model checkpoints:
+
+```python
+# In HiPaS/predict_av.py — bottom of file
+ct = np.load("/your/data/ct.npz")["data"]
+ct = np.clip((ct + 1000) / 1400, 0, 1)   # if CT is in raw HU
+artery, vein = predict_av(ct)
+```
+
+Model checkpoint paths (`MODEL_DIR` and `NUM_STAGES`) are configured at the top of the file. Inference on a single volume takes approximately 2 minutes on an A100 GPU.
+
+---
+
+## Training
+
+This section describes how to reproduce the STS training pipeline described in the paper. Training requires a dataset with **four levels of cumulative artery-vein annotations** per CT volume (see *Data format* below).
+
+### Data format
+
+Organise your dataset as follows. Each sample requires five `.npz` files:
+
+```
+data/
+├── patient_001/
+│   ├── ct.npz          # CT scan, key="data", shape (D, H, W), normalised to [0, 1]
+│   ├── filter.npz      # Jerman vesselness filter of ct, key="data", shape (D, H, W), in [0, 1]
+│   ├── mask_lv0.npz    # Level 0 cumulative mask (cardinal vessels inside heart)
+│   ├── mask_lv1.npz    # Level 1 cumulative mask (hilum, 1–2 branch levels)
+│   ├── mask_lv2.npz    # Level 2 cumulative mask (3–5 branch levels)
+│   └── mask_lv3.npz    # Level 3 cumulative mask (all visible vessels)
+├── patient_002/
+│   └── ...
+```
+
+Each mask file contains a **two-channel array** (`key="data"`, shape `(2, D, H, W)`) where channel 0 is the artery mask and channel 1 is the vein mask. Masks are **cumulative**: level *i* includes all vessels from levels 0 through *i*.
+
+Then create two JSON index files listing the training and validation samples:
+
+```json
+[
+  {
+    "ct":     "data/patient_001/ct.npz",
+    "filter": "data/patient_001/filter.npz",
+    "mask_0": "data/patient_001/mask_lv0.npz",
+    "mask_1": "data/patient_001/mask_lv1.npz",
+    "mask_2": "data/patient_001/mask_lv2.npz",
+    "mask_3": "data/patient_001/mask_lv3.npz"
+  }
+]
+```
+
+Save these as `data/train.json` and `data/val.json`, and set the paths in `av_training/config.yaml`.
+
+To compute the Jerman vesselness filter for a CT volume:
+
+```python
+from filter import jerman_filter_scan
+import numpy as np
+
+ct = np.load("data/patient_001/ct.npz")["data"]  # already normalised to [0, 1]
+filt = jerman_filter_scan(ct, enhance=True)
+np.savez_compressed("data/patient_001/filter.npz", data=filt)
+```
+
+### Step 1 — Train Stage 0
+
+Edit `av_training/config.yaml`:
+
+```yaml
+training:
+  stage: 0
+  pretrained_stage_paths: []
+  checkpoint_dir: "checkpoints/stage_0"
+```
+
+Then run:
+
+```bash
+cd av_training
+python train.py --config config.yaml
+```
+
+### Step 2 — Precompute priors for Stage 1
+
+Before training Stage 1, run the frozen Stage 0 model over all training and validation samples to generate prior probability maps. These are saved alongside each CT file and automatically loaded by the dataset class.
+
+```bash
+python precompute_prior.py \
+  --config config.yaml \
+  --model checkpoints/stage_0/best.pth \
+  --source-stage 0 \
+  --data-list data/train.json data/val.json
+```
+
+### Step 3 — Train Stage 1
+
+Edit `config.yaml`:
+
+```yaml
+training:
+  stage: 1
+  pretrained_stage_paths: ["checkpoints/stage_0/best.pth"]
+  checkpoint_dir: "checkpoints/stage_1"
+```
+
+Run `python train.py --config config.yaml`. Repeat Steps 2–3 for Stages 2 and 3, extending `pretrained_stage_paths` and updating the `source-stage` argument accordingly.
+
+### Key hyperparameters
+
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| Patch size | 192 × 192 × 128 | Random crop during training |
+| Optimizer | Adam | lr = 1e-4, β = (0.9, 0.999) |
+| Loss | Weighted Dice + Overlap | Eq. 13–17 in the paper |
+| Model | HiPaSNet | mid\_channels=24, r=4 |
+
+---
+
+## Results
 
 ### Workflow
-![image](https://github.com/Arturia-Pendragon-Iris/HiPaS_AV_Segmentation/blob/main/img/fig-1-4.png)
 
-### Performance evaluation
-![image](https://github.com/Arturia-Pendragon-Iris/HiPaS_AV_Segmentation/blob/main/img/fig-2_1.png)
+![Workflow](img/fig-1-4.png)
+
+### Segmentation performance
+
+![Performance](img/fig-2_1.png)
 
 ### Clinical evaluation
-![image](https://github.com/Arturia-Pendragon-Iris/HiPaS_AV_Segmentation/blob/main/img/fig-3-3.png)
+
+![Clinical](img/fig-3-3.png)
 
 ### Anatomical study
-![image](https://github.com/Arturia-Pendragon-Iris/HiPaS_AV_Segmentation/blob/main/img/stat.png)
 
-## Cite
+![Anatomical study](img/stat.png)
+
+---
+
+## Citation
+
+```bibtex
+@article{chu2025hipas,
+  title   = {Deep learning-driven pulmonary artery and vein segmentation reveals
+             demography-associated vasculature anatomical differences},
+  author  = {Chu, Yuetan and Luo, Gongning and Zhou, Longxi and others},
+  journal = {Nature Communications},
+  volume  = {16},
+  pages   = {2262},
+  year    = {2025},
+  doi     = {10.1038/s41467-025-56505-6}
+}
 ```
-Chu, Y., Luo, G., Zhou, L. et al. Deep learning-driven pulmonary artery and vein segmentation reveals demography-associated vasculature anatomical differences. Nat Commun 16, 2262 (2025). https://doi.org/10.1038/s41467-025-56505-6
-```
-
-
-

@@ -1,0 +1,69 @@
+data:
+  # JSON file listing all training samples.
+  # Format: list of dicts with keys: ct, filter, mask_0..3, and optionally prior_N
+  # Example entry:
+  #   { "ct": "/data/p001/ct.npz",  "filter": "/data/p001/filter.npz",
+  #     "mask_0": "/data/p001/mask_lv0.npz", ..., "mask_3": "/data/p001/mask_lv3.npz" }
+  train_list: "data/train.json"
+  val_list:   "data/val.json"
+
+  # Key to use when loading from .npz files (e.g. np.load(path)[npz_key])
+  npz_key: "data"
+
+  # Whether the CT is stored as raw HU values (will apply hu_min/hu_max clip + normalize)
+  # Set to false if the CT is already normalized to [0, 1]
+  normalize_hu: true
+  hu_min: -1000
+  hu_max:   600
+
+  # Masks are cumulative: mask_i includes all vessels from level 0 to i
+  # (set to false if masks are incremental — each level contains only new vessels)
+  cumulative_masks: true
+
+model:
+  in_channels: 2       # CT + Jerman filter
+  mid_channels: 24
+  out_channels: 2      # artery + vein
+  r: 4                 # channel expansion ratio inside ResBlock
+
+training:
+  # Which stage to train: 0, 1, 2, or 3
+  stage: 0
+
+  # Paths to the checkpoint (.pth) files of the already-trained stages 0 .. stage-1.
+  # These models are loaded frozen to generate the prior during training stage i.
+  # Leave empty for stage 0.
+  # For stage 1: ["/path/to/stage_0.pth"]
+  # For stage 2: ["/path/to/stage_0.pth", "/path/to/stage_1.pth"]
+  pretrained_stage_paths: []
+
+  # Patch / sliding-window crop size (D, H, W) during training
+  crop_size: [128, 192, 192]
+
+  batch_size: 1
+  num_workers: 4
+  pin_memory: true
+
+  lr: 1.0e-4
+  betas: [0.9, 0.999]
+  epochs: 200
+
+  # Log / save every N epochs
+  val_interval: 5
+  save_interval: 10
+
+  checkpoint_dir: "checkpoints/stage_0"
+
+  # If true, save best model based on validation Dice (artery+vein average)
+  save_best: true
+
+precompute:
+  # When set, precompute_prior.py will use this model path to generate priors.
+  # The output is saved next to each sample's CT as "prior_<stage>.npz".
+  # After running precompute_prior.py, the training dataset auto-loads these files.
+  model_path: ""
+  source_stage: 0       # which stage model generates the priors
+  output_key: "arr_0"
+  sw_roi_size: [128, 192, 192]
+  sw_batch_size: 1
+  sw_overlap: 0.25

@@ -1,9 +1,6 @@
-import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-# import CT_denoise.denoising_V6.block as B
-# from models.block_2D import decoding_block, encoding_block
 
 
 class Getgradientnopadding(nn.Module):
@@ -66,7 +63,6 @@ class FRB(nn.Module):
         x = self.conv_1(x)
         x = self.relu(x)
         x = self.conv_2(x)
-        #########
         return x
 
 
@@ -116,22 +112,10 @@ class I2SR(nn.Module):
                       padding=(1, 1, 0), bias=True))
 
     def forward(self, x0):
-        x = x0
-        # x_grad = x0.clone()
-        # for i in range(x_grad.shape[-1]):
-        #     x_grad[:, :, :, :, i] = self.get_g_nopadding(x0[:, :, :, :, i])
-
-        # x = torch.concat([x0, x_grad], dim=1)
-        x = self.fea_conv(x)
-        x = self.rb_blocks(x)
-        x = self.fusion_block(x)
-        # print(x.shape)
-
+        x = self.fusion_block(self.rb_blocks(self.fea_conv(x0)))
         x_out = self.final_conv(x)
-        # print(x.shape)
         for i in range(x_out.shape[-1]):
             x_out[:, :, :, :, i] += x0[:, :, :, :, 2]
-
         return x_out
 
 class Residual_Block(nn.Module):

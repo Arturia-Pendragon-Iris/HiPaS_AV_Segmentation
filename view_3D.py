@@ -1,34 +1,71 @@
 import os
-import vtk
 import sys
-from medpy import io
+import vtk
 import numpy as np
+from medpy import io
+
 sys.path.append('/ibex/scratch/projects/c2052/Lung_CAD_NMI/source_codes')
-# import Tool_Functions.Functions as Functions
+
+# Colors (R, G, B) in [0, 1]
+COLOR_ARTERY = (241 / 255, 157 / 255, 151 / 255)
+COLOR_VEIN = (130 / 255, 176 / 255, 210 / 255)
+COLOR_LUNG = (200 / 255, 200 / 255, 200 / 255)
+COLOR_DEFAULT = (126 / 255, 161 / 255, 187 / 255)
 
 
-# def visualize_stl(stl_path):
-#     Functions.visualize_stl(stl_path)
+def _make_actor(color, rotate_x=0, rotate_y=0):
+    actor = vtk.vtkActor()
+    actor.GetProperty().SetColor(*color)
+    if rotate_x:
+        actor.RotateX(rotate_x)
+    if rotate_y:
+        actor.RotateY(rotate_y)
+    return actor
+
+
+def _render(*actors, window_size=(800, 800)):
+    ren = vtk.vtkRenderer()
+    ren.SetBackground(1.0, 1.0, 1.0)
+    for actor in actors:
+        ren.AddActor(actor)
+
+    renWin = vtk.vtkRenderWindow()
+    renWin.AddRenderer(ren)
+    renWin.SetSize(*window_size)
+
+    iren = vtk.vtkRenderWindowInteractor()
+    iren.SetRenderWindow(renWin)
+    iren.Initialize()
+    renWin.Render()
+    iren.Start()
+
+
+def _stl_reader_to_actor(filepath, color, rotate_x=0):
+    reader = vtk.vtkSTLReader()
+    reader.SetFileName(filepath)
+
+    mapper = vtk.vtkPolyDataMapper()
+    mapper.SetInputConnection(reader.GetOutputPort())
+
+    actor = _make_actor(color, rotate_x=rotate_x)
+    actor.SetMapper(mapper)
+    return actor
 
 
 def convert_mha_to_stl(mha_path, stl_path=None, visualize=False):
-    # mha_file_path = "E:/vtk_stl/LI(3).mha"  # 这是mha文件的路径
-    # stl_file_path = "E:/vtk_stl/Li(3).stl"  # 这是保存stl文件的路径
-    mha_file_path = mha_path
-    stl_file_path = stl_path
-    if stl_file_path is None and visualize is False:
-        return None
+    if stl_path is None and not visualize:
+        return
 
     reader = vtk.vtkMetaImageReader()
-    reader.SetFileName(mha_file_path)
+    reader.SetFileName(mha_path)
     reader.Update()
 
-    extra = vtk.vtkMarchingCubes()
-    extra.SetInputConnection(reader.GetOutputPort())
-    extra.SetValue(0, 1)
+    mc = vtk.vtkMarchingCubes()
+    mc.SetInputConnection(reader.GetOutputPort())
+    mc.SetValue(0, 1)
 
     stripper = vtk.vtkStripper()
-    stripper.SetInputConnection(extra.GetOutputPort())
+    stripper.SetInputConnection(mc.GetOutputPort())
 
     mapper = vtk.vtkPolyDataMapper()
     mapper.SetInputConnection(stripper.GetOutputPort())
@@ -36,263 +73,92 @@ def convert_mha_to_stl(mha_path, stl_path=None, visualize=False):
 
     actor = vtk.vtkActor()
     actor.SetMapper(mapper)
-    # actor.SetMapper.ScalarVisibilityOff()
-    # actor.GetProperty().SetColor(120 / 255, 176 / 255, 210 / 255)
     actor.GetProperty().SetColor(180 / 255, 180 / 255, 180 / 255)
-    # actor.GetProperty().SetColor(250 / 255, 127 / 255, 111 / 255)
-    # actor.GetProperty().SetColor(180 / 255, 182 / 255, 184 / 255)
-    # Create a rendering window and renderer
-    ren = vtk.vtkRenderer()
-    renWin = vtk.vtkRenderWindow()
-    renWin.AddRenderer(ren)
-    renWin.SetSize(600, 600)
 
-    # Create a renderwindowinteractor
-    iren = vtk.vtkRenderWindowInteractor()
-    iren.SetRenderWindow(renWin)
-
-    # Assign actor to the renderer
-    ren.AddActor(actor)
-    ren.SetBackground(1.0, 1.0, 1.0)
-
-    # Enable user interface interactor
-    # 显示三维模型，关闭后再保存stl文件
     if visualize:
-        iren.Initialize()
-        renWin.Render()
-        iren.Start()
-    if stl_file_path is None:
-        return None
+        _render(actor)
 
-    triangle = vtk.vtkTriangleFilter()
-    triangle.SetInputConnection(extra.GetOutputPort())
-    triangle.PassVertsOff()
-    triangle.PassLinesOff()
+    if stl_path is not None:
+        triangle = vtk.vtkTriangleFilter()
+        triangle.SetInputConnection(mc.GetOutputPort())
+        triangle.PassVertsOff()
+        triangle.PassLinesOff()
 
-    decimation = vtk.vtkQuadricDecimation()
-    decimation.SetInputConnection(triangle.GetOutputPort())
+        clean = vtk.vtkCleanPolyData()
+        clean.SetInputConnection(triangle.GetOutputPort())
 
-    clean = vtk.vtkCleanPolyData()
-    clean.SetInputConnection(triangle.GetOutputPort())
+        triangle2 = vtk.vtkTriangleFilter()
+        triangle2.SetInputConnection(clean.GetOutputPort())
+        triangle2.PassVertsOff()
+        triangle2.PassLinesOff()
 
-    triangle2 = vtk.vtkTriangleFilter()
-    triangle2.SetInputConnection(clean.GetOutputPort())
-    triangle2.PassVertsOff()
-    triangle2.PassLinesOff()
-
-    stlWriter = vtk.vtkSTLWriter()
-    stlWriter.SetInputConnection(triangle2.GetOutputPort())
-    stlWriter.SetFileName(stl_file_path)
-    stlWriter.SetFileTypeToBinary()
-    stlWriter.Write()
-
-    return None
+        writer = vtk.vtkSTLWriter()
+        writer.SetInputConnection(triangle2.GetOutputPort())
+        writer.SetFileName(stl_path)
+        writer.SetFileTypeToBinary()
+        writer.Write()
 
 
-def save_numpy_as_stl(np_array, save_dict, stl_name, visualize=False, spacing=(1, 1, 1)):
-    if not os.path.exists(save_dict):
-        os.makedirs(save_dict)
+def save_numpy_as_stl(np_array, save_dir, stl_name, visualize=False, spacing=(1, 1, 1)):
+    os.makedirs(save_dir, exist_ok=True)
 
-    if stl_name[-4::] == '.stl' or stl_name[-4::] == '.mha':
-        stl_name = stl_name[:-4]
+    base = stl_name.rstrip('.stl').rstrip('.mha')
+    mha_path = os.path.join(save_dir, base + '.mha')
+    stl_path = os.path.join(save_dir, base + '.stl')
 
-    np_array = np.transpose(np_array, (1, 0, 2))
-    np_array[np_array < 0.5] = 0
-    np_array[np_array >= 0.5] = 1
-    np_array = np_array.astype("uint8")
-    header = io.Header(spacing=spacing)
-    # print("mha file path:", save_dict + stl_name + '.mha')
-    io.save(np_array, save_dict + stl_name + '.mha', hdr=header, use_compression=True)
+    arr = np.transpose(np_array, (1, 0, 2))
+    arr = (arr >= 0.5).astype("uint8")
+    io.save(arr, mha_path, hdr=io.Header(spacing=spacing), use_compression=True)
+    convert_mha_to_stl(mha_path, stl_path, visualize=visualize)
 
-    stl_path = save_dict + stl_name + ".stl"
-    convert_mha_to_stl(save_dict + stl_name + '.mha', stl_path, visualize=visualize)
+
+def _numpy_to_temp_stl(np_array, temp_path):
+    save_dir = os.path.dirname(temp_path)
+    stl_name = os.path.basename(temp_path)
+    save_numpy_as_stl(np_array, save_dir, stl_name, visualize=False)
 
 
 def visualize_numpy_as_stl(numpy_array, temp_path='/home/chuy/Downloads/temp.stl'):
-    # temp_path: we need to save numpy_array as .stl, then load .stl to visualize
-    # numpy_array should be binary, like 1 means inside tracheae, 0 means outside tracheae
-    save_dict = temp_path[:-len(temp_path.split('/')[-1])]
-    stl_name = temp_path.split('/')[-1]
-    # print(numpy_array.shape)
-    save_numpy_as_stl(numpy_array, save_dict, stl_name, visualize=True)
+    _numpy_to_temp_stl(numpy_array, temp_path)
+    visualize_stl(temp_path)
 
 
-def visualize_enhanced_channels(array_with_enhanced_channel_dict, save_dict):
-    arrays_name_list = os.listdir(array_with_enhanced_channel_dict)
-    for array_name in arrays_name_list:
-        array_with_enhanced_channel = np.load(os.path.join(array_with_enhanced_channel_dict, array_name))['array']
-        high_recall_mask = array_with_enhanced_channel[:, :, :, 1]
-        save_numpy_as_stl(high_recall_mask, os.path.join(save_dict, 'high_recall/'),
-                          array_name[:-4] + '_high_recall.stl')
-
-        high_precision_mask = array_with_enhanced_channel[:, :, :, 2]
-        save_numpy_as_stl(high_precision_mask, os.path.join(save_dict, 'high_precision/'),
-                          array_name[:-4] + '_high_precision.stl')
+def visualize_two_numpy(numpy_array_1, numpy_array_2,
+                        temp_dir='/home/chuy/Downloads'):
+    path_1 = os.path.join(temp_dir, 'temp_1.stl')
+    path_2 = os.path.join(temp_dir, 'temp_2.stl')
+    _numpy_to_temp_stl(numpy_array_1, path_1)
+    _numpy_to_temp_stl(numpy_array_2, path_2)
+    stl_visualization_two_file(path_1, path_2)
 
 
-def visualize_two_numpy(numpy_array_1, numpy_array_2):
-    temp_path_1 = '/home/chuy/Downloads/temp_1.stl'
-    temp_path_2 = '/home/chuy/Downloads/temp_2.stl'
-    # temp_path: we need to save numpy_array as .stl, then load .stl to visualize
-    # numpy_array should be binary, like 1 means inside tracheae, 0 means outside tracheae
-    save_dict_1 = temp_path_1[:-len(temp_path_1.split('/')[-1])]
-    stl_name_1 = temp_path_1.split('/')[-1]
-    save_numpy_as_stl(numpy_array_1, save_dict_1, stl_name_1, visualize=False)
-
-    save_dict_2 = temp_path_2[:-len(temp_path_2.split('/')[-1])]
-    stl_name_2 = temp_path_2.split('/')[-1]
-    save_numpy_as_stl(numpy_array_2, save_dict_2, stl_name_2, visualize=False)
-
-    stl_visualization_two_file(temp_path_1, temp_path_2)
+def visualize_three_numpy(numpy_array_1, numpy_array_2, numpy_array_3,
+                          temp_dir='/home/chuy/Downloads'):
+    path_1 = os.path.join(temp_dir, 'temp_1.stl')
+    path_2 = os.path.join(temp_dir, 'temp_2.stl')
+    path_3 = os.path.join(temp_dir, 'temp_3.stl')
+    _numpy_to_temp_stl(numpy_array_1, path_1)
+    _numpy_to_temp_stl(numpy_array_2, path_2)
+    _numpy_to_temp_stl(numpy_array_3, path_3)
+    stl_visualization_three_file(path_1, path_2, path_3)
 
 
 def stl_visualization_two_file(file_1, file_2):
-    reader_1 = vtk.vtkSTLReader()
-    reader_1.SetFileName(file_1)
-
-    mapper_1 = vtk.vtkPolyDataMapper()
-    mapper_1.SetInputConnection(reader_1.GetOutputPort())
-
-    actor_1 = vtk.vtkActor()
-    actor_1.SetMapper(mapper_1)
-    # actor_1.GetProperty().SetColor(77/255, 155/255, 259/255)
-    actor_1.GetProperty().SetColor(130 / 255, 176 / 255, 210 / 255)
-    # actor_1.GetProperty().SetColor(158/255, 158/255, 158/255)
-    actor_1.RotateX(90)
-    # actor_1.RotateY(90)
-    # actor_1.RotateZ(-90)
-
-    reader_2 = vtk.vtkSTLReader()
-    reader_2.SetFileName(file_2)
-
-    mapper_2 = vtk.vtkPolyDataMapper()
-    mapper_2.SetInputConnection(reader_2.GetOutputPort())
-
-    actor_2 = vtk.vtkActor()
-    actor_2.SetMapper(mapper_2)
-    actor_2.GetProperty().SetColor(241/255, 157/255, 151/255)
-    # actor_2.GetProperty().SetColor(250/255, 127 / 255, 111 / 255)
-    # actor_2.SetPosition(-190, -140, -40)
-    actor_2.RotateX(90)
-    # actor_2.RotateY(90)
-    # actor_2.RotateZ(-90)
-
-    # Create a rendering window and renderer
-    ren = vtk.vtkRenderer()
-    renWin = vtk.vtkRenderWindow()
-    renWin.AddRenderer(ren)
-
-    # Create a renderwindowinteractor
-    iren = vtk.vtkRenderWindowInteractor()
-    iren.SetRenderWindow(renWin)
-
-    # Assign actor to the renderer
-    ren.AddActor(actor_1)
-    ren.AddActor(actor_2)
-    ren.SetBackground(1.0, 1.0, 1.0)
-
-    # Enable user interface interactor
-    iren.Initialize()
-    renWin.Render()
-    iren.Start()
-
-
-def visualize_three_numpy(numpy_array_1, numpy_array_2, numpy_array_3):
-    temp_path_1 = "/home/chuy/Downloads/temp_1.stl"
-    temp_path_2 = "/home/chuy/Downloads/temp_2.stl"
-    temp_path_3 = "/home/chuy/Downloads/temp_3.stl"
-    # temp_path: we need to save numpy_array as .stl, then load .stl to visualize
-    # numpy_array should be binary, like 1 means inside tracheae, 0 means outside tracheae
-    save_dict_1 = temp_path_1[:-len(temp_path_1.split('/')[-1])]
-    stl_name_1 = temp_path_1.split('/')[-1]
-    save_numpy_as_stl(numpy_array_1, save_dict_1, stl_name_1, visualize=False)
-
-    save_dict_2 = temp_path_2[:-len(temp_path_2.split('/')[-1])]
-    stl_name_2 = temp_path_2.split('/')[-1]
-    save_numpy_as_stl(numpy_array_2, save_dict_2, stl_name_2, visualize=False)
-
-    save_dict_3 = temp_path_3[:-len(temp_path_3.split('/')[-1])]
-    stl_name_3 = temp_path_3.split('/')[-1]
-    save_numpy_as_stl(numpy_array_3, save_dict_3, stl_name_3, visualize=False)
-
-    stl_visualization_three_file(temp_path_1, temp_path_2, temp_path_3)
+    actor_1 = _stl_reader_to_actor(file_1, COLOR_VEIN, rotate_x=90)
+    actor_2 = _stl_reader_to_actor(file_2, COLOR_ARTERY, rotate_x=90)
+    _render(actor_1, actor_2)
 
 
 def stl_visualization_three_file(file_1, file_2, file_3):
-    reader_1 = vtk.vtkSTLReader()
-    reader_1.SetFileName(file_1)
-
-    mapper_1 = vtk.vtkPolyDataMapper()
-    mapper_1.SetInputConnection(reader_1.GetOutputPort())
-
-    actor_1 = vtk.vtkActor()
-    actor_1.SetMapper(mapper_1)
-    # actor_1.GetProperty().SetColor(77/255, 155/255, 259/255)
-    actor_1.GetProperty().SetColor(250 / 255, 127 / 255, 111 / 255)
-    # actor_1.GetProperty().SetColor(246 / 255, 202 / 255, 229 / 255)
-    # actor_1.GetProperty().SetColor(130 / 255, 176 / 255, 210 / 255)
-    # actor_1.RotateX(90)
-    # actor_1.RotateY(90)
-    # actor_1.RotateZ(-90)
-
-    reader_2 = vtk.vtkSTLReader()
-    reader_2.SetFileName(file_2)
-
-    mapper_2 = vtk.vtkPolyDataMapper()
-    mapper_2.SetInputConnection(reader_2.GetOutputPort())
-
-    actor_2 = vtk.vtkActor()
-    actor_2.SetMapper(mapper_2)
-    actor_2.GetProperty().SetColor(130 / 255, 176 / 255, 210 / 255)
-    # actor_2.GetProperty().SetColor(207 / 255, 234 / 255, 241 / 255)
-    # actor_2.GetProperty().SetColor(150 / 255, 234 / 255, 241 / 255)
-    # actor_2.GetProperty().SetColor(246 / 255, 202 / 255, 229 / 255)
-    # actor_2.SetPosition(-190, -140, -40)
-    # actor_2.RotateX(90)
-    # actor_2.RotateY(90)
-    # actor_2.RotateZ(-90)
-
-    reader_3 = vtk.vtkSTLReader()
-    reader_3.SetFileName(file_3)
-
-    mapper_3 = vtk.vtkPolyDataMapper()
-    mapper_3.SetInputConnection(reader_3.GetOutputPort())
-
-    actor_3 = vtk.vtkActor()
-    actor_3.SetMapper(mapper_3)
-    actor_3.GetProperty().SetColor(200/255, 200/255, 200/255)
-    # actor_2.SetPosition(-190, -140, -40)
-    # actor_2.RotateX(90)
-    # actor_2.RotateY(90)
-    # actor_3.RotateZ(-90)
-
-    # Create a rendering window and renderer
-    ren = vtk.vtkRenderer()
-    renWin = vtk.vtkRenderWindow()
-    renWin.AddRenderer(ren)
-
-    # Create a renderwindowinteractor
-    iren = vtk.vtkRenderWindowInteractor()
-    iren.SetRenderWindow(renWin)
-
-    # Assign actor to the renderer
-    ren.AddActor(actor_1)
-    ren.AddActor(actor_2)
-    ren.AddActor(actor_3)
-    ren.SetBackground(1.0, 1.0, 1.0)
-
-    # Enable user interface interactor
-    iren.Initialize()
-    renWin.Render()
-    iren.Start()
+    actor_1 = _stl_reader_to_actor(file_1, COLOR_ARTERY)
+    actor_2 = _stl_reader_to_actor(file_2, COLOR_VEIN)
+    actor_3 = _stl_reader_to_actor(file_3, COLOR_LUNG)
+    _render(actor_1, actor_2, actor_3)
 
 
 def visualize_stl(stl_path):
-    import vtk
-    filename = stl_path
-
     reader = vtk.vtkSTLReader()
-    reader.SetFileName(filename)
+    reader.SetFileName(stl_path)
 
     mapper = vtk.vtkPolyDataMapper()
     if vtk.VTK_MAJOR_VERSION <= 5:
@@ -300,31 +166,6 @@ def visualize_stl(stl_path):
     else:
         mapper.SetInputConnection(reader.GetOutputPort())
 
-    actor = vtk.vtkActor()
+    actor = _make_actor(COLOR_DEFAULT, rotate_y=-90)
     actor.SetMapper(mapper)
-    # actor.GetProperty().SetColor(130 / 255, 176 / 255, 210 / 255)
-    # actor.GetProperty().SetColor(238 / 255, 123 / 255, 108 / 255)
-    actor.GetProperty().SetColor(126 / 255, 161 / 255, 187 / 255)
-    # actor.GetProperty().SetColor(216 / 255, 123 / 255, 111 / 255)
-    # actor.RotateX(90)
-    actor.RotateY(-90)
-    # actor.RotateZ(-90)
-    # actor.GetProperty().SetColor(200 / 255, 203 / 255, 127 / 255)
-
-    # Create a rendering window and renderer
-    ren = vtk.vtkRenderer()
-    renWin = vtk.vtkRenderWindow()
-    renWin.AddRenderer(ren)
-
-    # Create a renderwindowinteractor
-    iren = vtk.vtkRenderWindowInteractor()
-    iren.SetRenderWindow(renWin)
-
-    # Assign actor to the renderer
-    ren.AddActor(actor)
-    ren.SetBackground(1.0, 1.0, 1.0)
-
-    # Enable user interface interactor
-    iren.Initialize()
-    renWin.Render()
-    iren.Start()
+    _render(actor)
