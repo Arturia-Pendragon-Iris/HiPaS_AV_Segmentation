@@ -33,17 +33,3 @@ lung.pth
 main_AV.pth
 AV_stage_1.pth
 ```
-
-## Smoke Test
-
-You can test the NIfTI I/O path without loading the model:
-
-```powershell
-& %USERPROFILE%\miniconda3\envs\arturia_v1\python.exe `
-  <repo-root>\HiPaSAVSeg\hipas_inference.py `
-  --input <repo-root>\smoke_input.nii.gz `
-  --output-dir <repo-root>\smoke_outputs `
-  --smoke-test
-```
-
-Smoke-test outputs are synthetic masks. They only verify that the runner can read a NIfTI file, write the expected output files, and generate metadata.
