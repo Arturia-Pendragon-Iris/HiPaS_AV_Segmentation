@@ -22,9 +22,15 @@ from slicer.ScriptedLoadableModule import (
 
 MODULE_DIR = Path(__file__).resolve().parent
 REPO_ROOT = MODULE_DIR.parent
+SLICER_ROOT = REPO_ROOT.parents[1]
 RUNNER_PATH = MODULE_DIR / "hipas_inference.py"
-DEFAULT_MODEL_DIR = REPO_ROOT
-DEFAULT_SOURCE_DIR = REPO_ROOT / "Simple_AV_seg-main" / "Simple_AV_seg-main"
+DEFAULT_EXTERNAL_PYTHON = Path("/home/chuy/anaconda3/envs/Arturia_v2/bin/python")
+DEFAULT_MODEL_DIR = SLICER_ROOT / "code" / "Simple_HiPaS"
+SLICER_PYTHON_ENV_VARS = (
+    "PYTHONHOME",
+    "PYTHONPATH",
+    "PYTHONNOUSERSITE",
+)
 
 
 class HiPaSAVSeg(ScriptedLoadableModule):
@@ -64,7 +70,7 @@ class HiPaSAVSegWidget(ScriptedLoadableModuleWidget):
         self.python_path_edit = self._path_row(
             form_layout,
             "External Python:",
-            os.environ.get("HIPAS_PYTHON", ""),
+            os.environ.get("HIPAS_PYTHON", str(DEFAULT_EXTERNAL_PYTHON)),
             "Select the Python executable from the environment that has torch, monai, and nibabel.",
             file_mode=True,
         )
@@ -73,13 +79,6 @@ class HiPaSAVSegWidget(ScriptedLoadableModuleWidget):
             "Model directory:",
             str(DEFAULT_MODEL_DIR),
             "Directory containing lung.pth, main_AV.pth, and AV_stage_1.pth.",
-            file_mode=False,
-        )
-        self.source_dir_edit = self._path_row(
-            form_layout,
-            "Source directory:",
-            str(DEFAULT_SOURCE_DIR),
-            "Directory containing models.py and frangi_gpu.py.",
             file_mode=False,
         )
         self.output_dir_edit = self._path_row(
@@ -151,7 +150,6 @@ class HiPaSAVSegWidget(ScriptedLoadableModuleWidget):
                 input_node=input_node,
                 python_path=Path(self.python_path_edit.text.strip()),
                 model_dir=Path(self.model_dir_edit.text.strip()),
-                source_dir=Path(self.source_dir_edit.text.strip()),
                 output_dir=Path(self.output_dir_edit.text.strip()),
                 load_outputs=self.load_outputs_checkbox.checked,
                 log_callback=self.append_log,
@@ -169,7 +167,7 @@ class HiPaSAVSegWidget(ScriptedLoadableModuleWidget):
 
 
 class HiPaSAVSegLogic(ScriptedLoadableModuleLogic):
-    def run(self, input_node, python_path, model_dir, source_dir, output_dir, load_outputs=True, log_callback=None):
+    def run(self, input_node, python_path, model_dir, output_dir, load_outputs=True, log_callback=None):
         if input_node is None:
             raise ValueError("Select an input volume.")
         if not python_path.is_file():
@@ -178,8 +176,6 @@ class HiPaSAVSegLogic(ScriptedLoadableModuleLogic):
             raise FileNotFoundError(f"Inference runner was not found: {RUNNER_PATH}")
         if not model_dir.exists():
             raise FileNotFoundError(f"Model directory was not found: {model_dir}")
-        if not source_dir.exists():
-            raise FileNotFoundError(f"Source directory was not found: {source_dir}")
 
         output_dir.mkdir(parents=True, exist_ok=True)
         input_path = output_dir / "hipas_input.nii.gz"
@@ -197,13 +193,15 @@ class HiPaSAVSegLogic(ScriptedLoadableModuleLogic):
             str(output_dir),
             "--model-dir",
             str(model_dir),
-            "--source-dir",
-            str(source_dir),
         ]
         if log_callback:
             log_callback("Running: " + subprocess.list2cmdline(command))
 
-        completed = subprocess.run(command, capture_output=True, text=True, cwd=str(REPO_ROOT))
+        env = os.environ.copy()
+        for variable in SLICER_PYTHON_ENV_VARS:
+            env.pop(variable, None)
+        env.setdefault("MPLCONFIGDIR", str(output_dir / ".matplotlib"))
+        completed = subprocess.run(command, capture_output=True, text=True, cwd=str(REPO_ROOT), env=env)
         if completed.stdout and log_callback:
             log_callback(completed.stdout)
         if completed.stderr and log_callback:

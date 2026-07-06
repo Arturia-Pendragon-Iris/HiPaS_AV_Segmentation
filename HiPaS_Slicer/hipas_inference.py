@@ -11,6 +11,7 @@ import argparse
 import json
 import os
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 import nibabel as nib
@@ -21,8 +22,17 @@ from monai.inferers import sliding_window_inference
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_SOURCE_DIR = REPO_ROOT / "Simple_AV_seg-main" / "Simple_AV_seg-main"
+MODULE_DIR = Path(__file__).resolve().parent
+DEFAULT_SOURCE_DIR = MODULE_DIR
 DEFAULT_MODEL_DIR = REPO_ROOT
+
+
+@dataclass(frozen=True)
+class LayoutContext:
+    mode: str
+    original_axcodes: tuple[str, str, str]
+    original_shape: tuple[int, int, int]
+    inference_shape: tuple[int, int, int]
 
 
 def parse_args() -> argparse.Namespace:
@@ -34,7 +44,7 @@ def parse_args() -> argparse.Namespace:
         "--source-dir",
         default=DEFAULT_SOURCE_DIR,
         type=Path,
-        help="Directory containing models.py and frangi_gpu.py.",
+        help="Directory containing models.py and frangi_gpu.py. Defaults to this Slicer module directory.",
     )
     parser.add_argument(
         "--device",
@@ -58,6 +68,14 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Run a lightweight NIfTI I/O smoke test and write synthetic masks instead of loading the models.",
     )
+    parser.add_argument(
+        "--layout",
+        default="simple-av",
+        choices=("simple-av", "native"),
+        help="Use the Simple_AV_seg NIfTI layout, transpose(1,0,2), or keep native voxel layout.",
+    )
+    parser.add_argument("--hu-offset", default=1000.0, type=float, help="HU offset used for CT normalization.")
+    parser.add_argument("--hu-scale", default=1400.0, type=float, help="HU scale used for CT normalization.")
     return parser.parse_args()
 
 
@@ -92,7 +110,7 @@ def require_weights(model_dir: Path) -> dict[str, Path]:
     return weights
 
 
-def normalize_ct(data: np.ndarray) -> np.ndarray:
+def normalize_ct(data: np.ndarray, hu_offset: float, hu_scale: float) -> np.ndarray:
     data = np.asarray(data, dtype=np.float32)
     finite = data[np.isfinite(data)]
     if finite.size == 0:
@@ -101,8 +119,46 @@ def normalize_ct(data: np.ndarray) -> np.ndarray:
     low = float(np.percentile(finite, 1))
     high = float(np.percentile(finite, 99))
     if low < -10.0 or high > 2.0:
-        data = (data + 1000.0) / 1600.0
+        data = (data + hu_offset) / hu_scale
     return np.clip(data, 0.0, 1.0).astype(np.float32, copy=False)
+
+
+def apply_input_layout(data: np.ndarray, reference: nib.Nifti1Image, mode: str) -> tuple[np.ndarray, LayoutContext]:
+    context = LayoutContext(
+        mode=mode,
+        original_axcodes=nib.aff2axcodes(reference.affine),
+        original_shape=tuple(int(value) for value in data.shape),
+        inference_shape=tuple(int(value) for value in data.shape),
+    )
+    if mode == "native":
+        return np.ascontiguousarray(data, dtype=np.float32), context
+    if mode == "simple-av":
+        transposed = np.transpose(data, (1, 0, 2))
+        context = LayoutContext(
+            mode=mode,
+            original_axcodes=context.original_axcodes,
+            original_shape=context.original_shape,
+            inference_shape=tuple(int(value) for value in transposed.shape),
+        )
+        return np.ascontiguousarray(transposed, dtype=np.float32), context
+    raise ValueError(f"Unsupported input layout: {mode}")
+
+
+def restore_output_layout(mask: np.ndarray, layout: LayoutContext) -> np.ndarray:
+    if layout.mode == "native":
+        return mask
+    if layout.mode == "simple-av":
+        return np.ascontiguousarray(np.transpose(mask, (1, 0, 2)), dtype=mask.dtype)
+    raise ValueError(f"Unsupported output layout: {layout.mode}")
+
+
+def layout_metadata(layout: LayoutContext) -> dict[str, object]:
+    return {
+        "original_orientation": "".join(layout.original_axcodes),
+        "layout_mode": layout.mode,
+        "original_shape": list(layout.original_shape),
+        "inference_shape": list(layout.inference_shape),
+    }
 
 
 def maybe_crop_even_z(volume: np.ndarray) -> tuple[np.ndarray, tuple[int, int, int]]:
@@ -316,15 +372,25 @@ def write_outputs(
     return metadata_path
 
 
-def run_smoke_test(ct_array: np.ndarray, reference: nib.Nifti1Image, output_dir: Path, input_path: Path) -> int:
+def run_smoke_test(
+    ct_array: np.ndarray,
+    reference: nib.Nifti1Image,
+    output_dir: Path,
+    input_path: Path,
+    layout: LayoutContext,
+) -> int:
     artery = (ct_array > 0.66).astype(np.uint8)
     vein = ((ct_array > 0.33) & (ct_array <= 0.66)).astype(np.uint8)
     lung = (ct_array > 0.05).astype(np.uint8)
+    artery = restore_output_layout(artery, layout)
+    vein = restore_output_layout(vein, layout)
+    lung = restore_output_layout(lung, layout)
     metadata = {
         "input": str(input_path),
         "shape": list(ct_array.shape),
         "device": "none",
         "smoke_test": True,
+        **layout_metadata(layout),
     }
     write_outputs(artery, vein, lung, reference, output_dir, metadata)
     return 0
@@ -339,11 +405,18 @@ def main() -> int:
     print(f"Input: {args.input}", flush=True)
 
     reference = nib.load(str(args.input))
-    ct_array = normalize_ct(reference.get_fdata(dtype=np.float32))
+    raw_ct = reference.get_fdata(dtype=np.float32)
+    ct_array, layout = apply_input_layout(raw_ct, reference, args.layout)
+    ct_array = normalize_ct(ct_array, args.hu_offset, args.hu_scale)
+    print(
+        f"Layout: {layout.mode}; original shape {layout.original_shape}; inference shape {layout.inference_shape}; "
+        f"normalization: (ct + {args.hu_offset:g}) / {args.hu_scale:g}",
+        flush=True,
+    )
 
     if args.smoke_test:
         print("Smoke test mode: writing synthetic masks without loading models.", flush=True)
-        return run_smoke_test(ct_array, reference, args.output_dir, args.input)
+        return run_smoke_test(ct_array, reference, args.output_dir, args.input, layout)
 
     add_source_dir(args.source_dir)
     device = select_device(args.device, args.allow_cpu)
@@ -353,12 +426,18 @@ def main() -> int:
     print(f"Device: {device}", flush=True)
 
     artery, vein, lung = predict_whole_av(ct_array, weights, device, args.threshold)
+    artery = restore_output_layout(artery, layout)
+    vein = restore_output_layout(vein, layout)
+    lung = restore_output_layout(lung, layout)
 
     metadata = {
         "input": str(args.input),
         "shape": list(ct_array.shape),
         "device": str(device),
         "smoke_test": False,
+        "hu_offset": float(args.hu_offset),
+        "hu_scale": float(args.hu_scale),
+        **layout_metadata(layout),
     }
     write_outputs(artery, vein, lung, reference, args.output_dir, metadata)
     return 0
