@@ -17,7 +17,7 @@ HiPaS is a framework for accurate, high-abundant pulmonary artery-vein segmentat
 > **Note on checkpoints.** Due to commercialization and patent policies, the final trained weights are not publicly available. For a simpler, deployable alternative, see [Simple_AV_seg](https://github.com/Tohsaka194/Simple_AV_seg).
 
 > We also provide a minimal **HiPaS_Slicer** as a Slicer demo for easier local testing and visualization. The demo allows users to load a standard NIfTI CT volume in 3D Slicer, run the simplified artery-vein segmentation pipeline through an external Python environment, and automatically load the generated artery, vein, and lung masks back into the Slicer scene as label volumes.
-> ![Slicer](img/HiPaS_slicer.png)
+![Slicer](img/HiPaS_slicer.png)
 
 ---
 
